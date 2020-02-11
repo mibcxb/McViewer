@@ -1,0 +1,28 @@
+{
+  "name": "cn.mibcxb.js.mcviewer",
+  "version": "1.0.0",
+  "description": "A simple image viewer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mibcxb/McViewer.git"
+  },
+  "author": "mibcxb",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mibcxb/McViewer/issues"
+  },
+  "homepage": "https://github.com/mibcxb/McViewer#readme",
+  "devDependencies": {
+    "electron": "^8.0.0"
+  },
+  "dependencies": {
+    "bootstrap": "^4.4.1",
+    "drivelist": "^8.0.9",
+    "jquery": "^3.4.1",
+    "popper.js": "^1.16.1"
+  }
+}

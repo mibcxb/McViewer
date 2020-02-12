@@ -98,19 +98,12 @@ function reloadFileGrid(filepath) {
   currentFilePath = filepath;
   editFilePath.value = currentFilePath;
 
-  removeChildren(fileGridContainer);
+  fileGridContainer.innerHTML = "";
   if (fsIsDirectory(currentFilePath)) {
     // 创建文件列表
     createFolderGrid(currentFilePath);
   } else if (fsIsFile(currentFilePath)) {
     // 显示压缩文件中的文件
-  }
-}
-
-function removeChildren(element) {
-  var elements = element.children;
-  for (var i = 0; i < elements.length; i++) {
-    elements[i].remove();
   }
 }
 
@@ -144,6 +137,7 @@ function createFileBoxElement(filepath) {
   imageLabel.textContent = basename;
 
   var image = document.createElement('img');
+  image.id = "fileImageThumb";
   if (fsIsDirectory(filepath)) {
     image.src = "../res/img/folder.png";
   } else if (fsIsImage(filepath)) {
@@ -155,6 +149,7 @@ function createFileBoxElement(filepath) {
 
   var imageBox = document.createElement('div');
   imageBox.className = "file-grid-image";
+  imageBox.setAttribute("filepath", filepath);
   imageBox.appendChild(image);
   imageBox.onclick = imageBoxOnClick;
   imageBox.ondblclick = imageBoxOnDoubleClick;

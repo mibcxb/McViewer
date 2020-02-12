@@ -123,16 +123,22 @@
         height: 16px;
       }
 
-      .file-grid-container {
+      .file-grid-wrapper {
         width: 100%;
         height: 92%;
         margin-top: 2px;
+        padding: 3px;
+        border: 1px solid #aca899;
+      }
+
+      .file-grid-container {
+        width: 100%;
+        height: auto;
+        max-height: 100%;
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
-        overflow: auto;
-        padding: 3px;
-        border: 1px solid #aca899;
+        overflow-y: auto;
       }
 
       .file-grid-filebox {
@@ -195,7 +201,9 @@
               <img id="editFileGoto" src="../res/img/goto.png" />
             </div>
           </div>
-          <div id="fileGridContainer" class="file-grid-container"></div>
+          <div class="file-grid-wrapper">
+            <div id="fileGridContainer" class="file-grid-container"></div>
+          </div>
           <div class="file-grid-infobar" style="background-color: #F0F0F0;"></div>
         </div>
       </div>

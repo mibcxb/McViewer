@@ -36,7 +36,7 @@ function loadRootList(zTree) {
   var nodes = zTree.getNodes();
   var rootNode = nodes[0];
   appendFileNodeList(zTree, rootNode);
-  reloadFileGrid(rootNode);
+  reloadFileGrid(rootNode.filepath);
 }
 
 function appendFileNodeList(zTree, parentNode) {
@@ -87,15 +87,15 @@ function createFileTreeNode(node) {
   return null;
 }
 
-function reloadFileGrid(treeNode) {
-  if (treeNode == null) {
+function reloadFileGrid(filepath) {
+  if (filepath == null) {
     return;
   }
-  if (currentFilePath === treeNode.filepath) {
+  if (currentFilePath === filepath) {
     return;
   }
 
-  currentFilePath = treeNode.filepath;
+  currentFilePath = filepath;
   editFilePath.value = currentFilePath;
 
   removeChildren(fileGridContainer);
@@ -148,15 +148,16 @@ function createFileBoxElement(filepath) {
     image.src = "../res/img/folder.png";
   } else if (fsIsImage(filepath)) {
     image.src = filepath;
-    image.setAttribute("filepath", filepath);
   } else {
     return null;
   }
+  image.setAttribute("filepath", filepath);
 
   var imageBox = document.createElement('div');
   imageBox.className = "file-grid-image";
   imageBox.appendChild(image);
   imageBox.onclick = imageBoxOnClick;
+  imageBox.ondblclick = imageBoxOnDoubleClick;
 
   var fileBox = document.createElement('div');
   fileBox.className = "file-grid-filebox";
@@ -168,7 +169,7 @@ function createFileBoxElement(filepath) {
 
 function fileTreeOnClick(event, treeId, treeNode) {
   // console.log("onClick : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
-  reloadFileGrid(treeNode);
+  reloadFileGrid(treeNode.filepath);
 }
 
 function fileTreeBeforeExpand(treeId, treeNode) {
@@ -189,8 +190,17 @@ function fileTreeOnCollapse(event, treeId, treeNode) {
 function imageBoxOnClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
-  if (filepath === null) {
-    return;
+  if (fsIsImage(filepath)) {
+    imagePreview.src = filepath;
   }
-  imagePreview.src = filepath;
+}
+
+function imageBoxOnDoubleClick(event) {
+  var image = event.target;
+  var filepath = image.getAttribute("filepath");
+  if (fsIsImage(filepath)) {
+    return;
+  } else if (fsIsDirectory(filepath)) {
+    reloadFileGrid(filepath);
+  }
 }

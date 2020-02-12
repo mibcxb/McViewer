@@ -1,14 +1,9 @@
-const os = require("os");
-const fs = require("fs");
-const path = require("path");
-
-const rootDir = "/"; // os.platform() === 'win32' ? "" : "/";
-const homeDir = path.resolve(os.homedir());
-
 var zTree;
 var treeSettings = {
   data: {
-    keep: { parent: true }
+    keep: {
+      parent: true
+    }
   },
   callback: {
     onClick: fileTreeOnClick,
@@ -17,17 +12,31 @@ var treeSettings = {
     onCollapse: fileTreeOnCollapse
   }
 };
-var treeNodeData = [{ name: "根目录", filepath: rootDir, children: [] }];
+var treeNodeData = [{
+  name: "根目录",
+  filepath: rootDir,
+  children: []
+}];
 
-$(document).ready(function() {
+var editFilePath;
+var imagePreview;
+var fileGridContainer;
+var currentFilePath;
+
+$(document).ready(function () {
   $.fn.zTree.init($("#fileTreeDemo"), treeSettings, treeNodeData);
   zTree = $.fn.zTree.getZTreeObj("fileTreeDemo");
+  editFilePath = document.getElementById('editFilePath');
+  imagePreview = document.getElementById('fileImagePreview');
+  fileGridContainer = document.getElementById('fileGridContainer');
   loadRootList(zTree);
 });
 
 function loadRootList(zTree) {
   var nodes = zTree.getNodes();
-  appendFileNodeList(zTree, nodes[0]);
+  var rootNode = nodes[0];
+  appendFileNodeList(zTree, rootNode);
+  reloadFileGrid(rootNode);
 }
 
 function appendFileNodeList(zTree, parentNode) {
@@ -41,11 +50,14 @@ function appendFileNodeList(zTree, parentNode) {
 
     for (index in files) {
       var name = files[index];
-      if (name.startsWith(".")) {
-        continue;
+      var node = {
+        name: name,
+        filepath: path.posix.join(folder, name)
+      };
+      var treeNode = createFileTreeNode(node);
+      if (treeNode != null) {
+        nodeList.push(treeNode);
       }
-      var subNode = { name: name, filepath: path.posix.join(folder, name), children: [] };
-      nodeList.push(subNode);
     }
     zTree.addNodes(parentNode, nodeList);
     zTree.refresh();
@@ -56,18 +68,129 @@ function removeFileNodeList(zTree, parentNode) {
   zTree.removeChildNodes(parentNode);
 }
 
-function fileTreeOnClick(event, treeId, treeNode) {
-  console.log("onClick : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
+function createFileTreeNode(node) {
+  if (fsIsHidden(node.filepath)) {
+    return null;
+  }
+  if (fsIsDirectory(node.filepath)) {
+    node.isParent = true;
+    node.children = [];
+    return node;
+  } else if (fsIsFile(node.filepath)) {
+    node.isParent = false;
+    var extname = path.posix.extname(node.filepath);
+    if (extname === ".zip") {
+      node.icon = "../res/img/zip.png";
+      return node;
+    }
+  }
+  return null;
 }
+
+function reloadFileGrid(treeNode) {
+  if (treeNode == null) {
+    return;
+  }
+  if (currentFilePath === treeNode.filepath) {
+    return;
+  }
+
+  currentFilePath = treeNode.filepath;
+  editFilePath.value = currentFilePath;
+
+  removeChildren(fileGridContainer);
+  if (fsIsDirectory(currentFilePath)) {
+    // 创建文件列表
+    createFolderGrid(currentFilePath);
+  } else if (fsIsFile(currentFilePath)) {
+    // 显示压缩文件中的文件
+  }
+}
+
+function removeChildren(element) {
+  var elements = element.children;
+  for (var i = 0; i < elements.length; i++) {
+    elements[i].remove();
+  }
+}
+
+function createFolderGrid(folder) {
+  fs.readdir(folder, (err, files) => {
+    if (err !== null) {
+      console.log(err);
+      return;
+    }
+
+    for (index in files) {
+      var name = files[index];
+      var filepath = path.posix.join(folder, name)
+      var fileBoxElement = createFileBoxElement(filepath);
+      if (fileBoxElement == null) {
+        continue;
+      }
+      fileGridContainer.appendChild(fileBoxElement);
+    }
+  });
+}
+
+function createFileBoxElement(filepath) {
+  if (fsIsHidden(filepath)) {
+    return null;
+  }
+  var basename = path.posix.basename(filepath);
+
+  var imageLabel = document.createElement('div');
+  imageLabel.className = "file-grid-imagelabel";
+  imageLabel.textContent = basename;
+
+  var image = document.createElement('img');
+  if (fsIsDirectory(filepath)) {
+    image.src = "../res/img/folder.png";
+  } else if (fsIsImage(filepath)) {
+    image.src = filepath;
+    image.setAttribute("filepath", filepath);
+  } else {
+    return null;
+  }
+
+  var imageBox = document.createElement('div');
+  imageBox.className = "file-grid-image";
+  imageBox.appendChild(image);
+  imageBox.onclick = imageBoxOnClick;
+
+  var fileBox = document.createElement('div');
+  fileBox.className = "file-grid-filebox";
+
+  fileBox.appendChild(imageBox);
+  fileBox.appendChild(imageLabel);
+  return fileBox;
+}
+
+function fileTreeOnClick(event, treeId, treeNode) {
+  // console.log("onClick : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
+  reloadFileGrid(treeNode);
+}
+
 function fileTreeBeforeExpand(treeId, treeNode) {
-  console.log("beforeExpand : treeId=" + treeId + ", node=" + treeNode.name);
+  // console.log("beforeExpand : treeId=" + treeId + ", node=" + treeNode.name);
   return true;
 }
+
 function fileTreeOnExpand(event, treeId, treeNode) {
-  console.log("onExpand : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
+  // console.log("onExpand : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
   appendFileNodeList(zTree, treeNode);
 }
+
 function fileTreeOnCollapse(event, treeId, treeNode) {
-  console.log("onCollapse : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
+  // console.log("onCollapse : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
   removeFileNodeList(zTree, treeNode);
+}
+
+function imageBoxOnClick(event) {
+  var image = event.target;
+  var filepath = image.getAttribute("filepath");
+  if (filepath === null) {
+    return;
+  }
+  imagePreview.src = filepath;
 }

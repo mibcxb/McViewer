@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>McViewer - A simple image viewer</title>
     <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
@@ -11,82 +10,198 @@
     <link rel="stylesheet" href="../third/zTree_v3/css/zTreeStyle/zTreeStyle.css" />
 
     <script>
-        window.$ = window.jQuery = require("jquery");
+      window.$ = window.jQuery = require("jquery");
     </script>
     <script src="../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
     <script src="../third/zTree_v3/js/jquery.ztree.core.min.js"></script>
 
     <style type="text/css">
-        html,
-        body,
-        .box-layout {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-        }
+      html,
+      body,
+      .box-layout {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
 
-        .box-header {
-            width: 100%;
-            height: 10%;
-        }
+      .box-header {
+        width: 100%;
+        height: 3%;
+        border: 1px solid #aca899;
+      }
 
-        .box-center {
-            width: 100%;
-            height: 90%;
-            display: flex;
-            flex-direction: row;
-        }
+      .box-center {
+        width: 100%;
+        height: 97%;
+        display: flex;
+        flex-direction: row;
+      }
 
-        .left-panel {
-            width: 20%;
-            height: 100%;
-            display: flex;
-            flex-direction: column-reverse;
-        }
+      .box-footer {
+        width: 100%;
+        height: 2%;
+      }
 
-        .image-preview {
-            width: 100%;
-            height: 30%;
-        }
+      .left-panel {
+        width: 25%;
+        height: 100%;
+        display: flex;
+        flex-direction: column-reverse;
+      }
 
-        .file-tree {
-            width: 100%;
-            height: 70%;
-            border-color: black;
-            border-width: 1px;
-        }
+      .image-preview {
+        width: 100%;
+        height: 30%;
+        margin-top: 2px;
+        border: 1px solid #aca899;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .image-preview img {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+      }
 
-        .file-grid {
-            width: 80%;
-            height: 100%;
-            display: flex;
-            flex-direction: row;
-        }
+      .file-tree {
+        width: 100%;
+        height: 70%;
+        overflow: auto;
+        border-top: 0px;
+        border-bottom: 1px;
+        border-left: 1px;
+        border-right: 1px;
+        border-style: solid;
+        border-color: #aca899;
+      }
 
-        .ztree {
-            width: 100%;
-            height: 100%;
-        }
+      .file-grid {
+        width: 75%;
+        height: 100%;
+        margin-left: 2px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .file-grid-toolbar {
+        width: 100%;
+        height: 3%;
+      }
+
+      .file-grid-pathbar {
+        width: 100%;
+        height: 3%;
+        display: flex;
+        flex-direction: row;
+      }
+
+      .file-grid-path {
+        width: 98%;
+        height: 100%;
+        font-size: 12px;
+        text-align: left center;
+        border: 1px solid #aca899;
+      }
+
+      .file-grid-goto {
+        width: 2%;
+        height: 100%;
+        padding-right: 2px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid transparent;
+      }
+
+      .file-grid-goto img {
+        width: 16px;
+        height: 16px;
+      }
+
+      .file-grid-container {
+        width: 100%;
+        height: 92%;
+        margin-top: 2px;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        overflow: auto;
+        padding: 3px;
+        border: 1px solid #aca899;
+      }
+
+      .file-grid-filebox {
+        width: 144px;
+        height: auto;
+        margin: 3px;
+      }
+      .file-grid-image {
+        width: 128px;
+        height: 96px;
+        padding-left: 4px;
+        padding-right: 4px;
+        padding-top: 3px;
+        padding-bottom: 3px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: 1px solid #e0e0e0;
+      }
+      .file-grid-image img {
+        width: auto;
+        height: auto;
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .file-grid-imagelabel {
+        width: 120px;
+        font-size: 10px;
+        word-wrap: break-word;
+        text-align: center;
+      }
+
+      .file-grid-infobar {
+        width: 100%;
+        height: 2%;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <div class="box-layout" style="background-color: #F4F3EA;">
-        <div class="box-header" style="background-color: #F0F0F0;"></div>
-        <div class="box-center">
-            <div class="left-panel">
-                <div class="image-preview" style="background-color: #C8C8C8;"></div>
-                <div class="file-tree">
-                    <ul id="fileTreeDemo" class="ztree" />
-                </div>
-            </div>
-            <div class="file-grid"></div>
+      <div class="box-header" style="background-color: #F0F0F0;"></div>
+      <div class="box-center">
+        <div class="left-panel">
+          <div class="image-preview" style="background-color: #C8C8C8;">
+            <img id="fileImagePreview" />
+          </div>
+          <div class="file-tree">
+            <ul id="fileTreeDemo" class="ztree" />
+          </div>
         </div>
+        <div class="file-grid">
+          <div class="file-grid-toolbar"></div>
+          <div class="file-grid-pathbar">
+            <input id="editFilePath" class="file-grid-path" type="text" />
+
+            <!-- <div class="file-grid-path" style="background-color: white;">
+                    </div> -->
+            <div class="file-grid-goto" style="text-align: center;">
+              <img id="editFileGoto" src="../res/img/goto.png" />
+            </div>
+          </div>
+          <div id="fileGridContainer" class="file-grid-container"></div>
+          <div class="file-grid-infobar" style="background-color: #F0F0F0;"></div>
+        </div>
+      </div>
+      <!-- <div class="box-footer" style="background-color: #F0F0F0;"></div> -->
     </div>
-
+    <script type="text/javascript" src="common.js"></script>
     <script type="text/javascript" src="home.js"></script>
-</body>
-
+  </body>
 </html>

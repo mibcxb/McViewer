@@ -29,6 +29,9 @@ $(document).ready(function () {
   editFilePath = document.getElementById('editFilePath');
   imagePreview = document.getElementById('fileImagePreview');
   fileGridContainer = document.getElementById('fileGridContainer');
+
+  document.getElementById('btnBackward').onclick = backwardOnClick;
+
   loadRootList(zTree);
 });
 
@@ -194,8 +197,14 @@ function imageBoxOnDoubleClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
   if (fsIsImage(filepath)) {
-    return;
+    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString('base64');
+    openLink(link);
   } else if (fsIsDirectory(filepath)) {
     reloadFileGrid(filepath);
   }
+}
+
+function backwardOnClick(event) {
+  var parentPath = path.posix.dirname(currentFilePath);
+  reloadFileGrid(parentPath);
 }

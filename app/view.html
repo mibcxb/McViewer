@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>McViewer - A simple image viewer</title>
+    <!-- https://electronjs.org/docs/tutorial/security#csp-meta-tag -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline';" />
+
+    <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="../third/zTree_v3/css/zTreeStyle/zTreeStyle.css" />
+
+    <script>
+        window.$ = window.jQuery = require("jquery");
+    </script>
+    <script src="../node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <style type="text/css">
+        html,
+        body,
+        .box-layout {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: 100%;
+            background-color: gray;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+        }
+
+        /* .image-preview img {
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+        } */
+    </style>
+</head>
+
+<body>
+    <div class="box-layout">
+        <div class="image-preview">
+            <img id="fileImagePreview" />
+        </div>
+    </div>
+    <script type="text/javascript" src="common.js"></script>
+    <script type="text/javascript" src="view.js"></script>
+</body>
+
+</html>

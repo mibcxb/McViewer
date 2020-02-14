@@ -28,20 +28,54 @@ let isDebug = true;
 $(document).ready(function () {
   $.fn.zTree.init($("#fileTreeDemo"), treeSettings, treeNodeData);
   zTree = $.fn.zTree.getZTreeObj("fileTreeDemo");
-  editFilePath = document.getElementById('editFilePath');
-  imagePreview = document.getElementById('fileImagePreview');
-  fileGridContainer = document.getElementById('fileGridContainer');
+  editFilePath = document.getElementById("editFilePath");
+  imagePreview = document.getElementById("fileImagePreview");
+  fileGridContainer = document.getElementById("fileGridContainer");
 
-  document.getElementById('btnBackward').onclick = backwardOnClick;
+  document.getElementById("btnBackward").onclick = backwardOnClick;
 
   loadRootList(zTree);
 });
 
 function loadRootList(zTree) {
-  var nodes = zTree.getNodes();
-  var rootNode = nodes[0];
-  appendFileNodeList(zTree, rootNode);
-  reloadFileGrid(rootNode.filepath);
+  var nodeList = zTree.getNodes();
+  var parentNode = null;
+  var parentPath = rootDir;
+
+  var dirNames = homeDir.split(path.sep);
+  for (dirIdx in dirNames) {
+    var filepath = path.posix.join(parentPath, dirNames[dirIdx]);
+    for (subIdx in nodeList) {
+      if (nodeList[subIdx].filepath === filepath) {
+        parentNode = nodeList[subIdx];
+        parentPath = nodeList[subIdx].filepath;
+        break;
+      }
+    }
+    nodeList = readFileList(zTree, parentNode, parentPath);
+  }
+  zTree.refresh();
+
+  reloadFileGrid(parentNode.filepath);
+}
+
+function readFileList(zTree, parentNode, filepath) {
+  // 同步创建子节点列表
+  var nodeList = [];
+  var files = fs.readdirSync(filepath);
+  for (index in files) {
+    var name = files[index];
+    var node = {
+      name: name,
+      filepath: path.posix.join(filepath, name)
+    };
+    var treeNode = createFileTreeNode(node);
+    if (treeNode != null) {
+      nodeList.push(treeNode);
+    }
+  }
+  zTree.addNodes(parentNode, nodeList);
+  return parentNode.children;
 }
 
 function appendFileNodeList(zTree, parentNode) {
@@ -107,9 +141,27 @@ function reloadFileGrid(filepath) {
   if (fsIsDirectory(currentFilePath)) {
     // 创建文件列表
     createFolderGrid(currentFilePath);
-  } else if (fsIsFile(currentFilePath)) {
+  } else if (fsIsZip(currentFilePath)) {
     // 显示压缩文件中的文件
+    createZipFileGrid(currentFilePath);
   }
+}
+
+function createZipFileGrid(filepath) {
+  fs.readFile(filepath, function (err, data) {
+    if (err) throw err;
+    JSZip.loadAsync(data).then(function (zip) {
+      var keys = Object.keys(zip.files);
+      for (keyIdx in keys) {
+        var zipKey = keys[keyIdx];
+        var fileBoxElement = createZipFileBoxElement(filepath, zip, zipKey);
+        if (fileBoxElement == null) {
+          continue;
+        }
+        fileGridContainer.appendChild(fileBoxElement);
+      }
+    });
+  });
 }
 
 function createFolderGrid(folder) {
@@ -121,7 +173,7 @@ function createFolderGrid(folder) {
 
     for (index in files) {
       var name = files[index];
-      var filepath = path.posix.join(folder, name)
+      var filepath = path.posix.join(folder, name);
       var fileBoxElement = createFileBoxElement(filepath);
       if (fileBoxElement == null) {
         continue;
@@ -131,17 +183,62 @@ function createFolderGrid(folder) {
   });
 }
 
+function createZipFileBoxElement(filepath, zip, zipKey) {
+  var zipFile = zip.files[zipKey];
+  var basename = path.posix.basename(zipKey);
+
+  var imageLabel = document.createElement("div");
+  imageLabel.className = "file-grid-imagelabel";
+  imageLabel.textContent = basename;
+
+  var image = document.createElement("img");
+  image.id = "fileImageThumb";
+  if (zipFile.dir) {
+    image.src = "../res/img/folder.png";
+  } else {
+    if (fsCheckExtName(zipKey, ".png")) {
+      zip.file(zipKey).async("base64").then(function (data) {
+        image.src = "data:image/png;base64," + data;
+      });
+      image.setAttribute("zipkey", zipKey);
+    } else if (fsCheckExtName(zipKey, ".jpg")) {
+      zip.file(zipKey).async("base64").then(function (data) {
+        image.src = "data:image/jpeg;base64," + data;
+      });
+      image.setAttribute("zipkey", zipKey);
+    } else {
+      return null;
+    }
+
+  }
+  image.setAttribute("filepath", filepath);
+
+  var imageBox = document.createElement("div");
+  imageBox.className = "file-grid-image";
+  imageBox.setAttribute("filepath", filepath);
+  imageBox.appendChild(image);
+  imageBox.onclick = imageBoxOnClick;
+  imageBox.ondblclick = imageBoxOnDoubleClick;
+
+  var fileBox = document.createElement("div");
+  fileBox.className = "file-grid-filebox";
+
+  fileBox.appendChild(imageBox);
+  fileBox.appendChild(imageLabel);
+  return fileBox;
+}
+
 function createFileBoxElement(filepath) {
   if (fsIsHidden(filepath)) {
     return null;
   }
   var basename = path.posix.basename(filepath);
 
-  var imageLabel = document.createElement('div');
+  var imageLabel = document.createElement("div");
   imageLabel.className = "file-grid-imagelabel";
   imageLabel.textContent = basename;
 
-  var image = document.createElement('img');
+  var image = document.createElement("img");
   image.id = "fileImageThumb";
   if (fsIsDirectory(filepath)) {
     image.src = "../res/img/folder.png";
@@ -152,14 +249,14 @@ function createFileBoxElement(filepath) {
   }
   image.setAttribute("filepath", filepath);
 
-  var imageBox = document.createElement('div');
+  var imageBox = document.createElement("div");
   imageBox.className = "file-grid-image";
   imageBox.setAttribute("filepath", filepath);
   imageBox.appendChild(image);
   imageBox.onclick = imageBoxOnClick;
   imageBox.ondblclick = imageBoxOnDoubleClick;
 
-  var fileBox = document.createElement('div');
+  var fileBox = document.createElement("div");
   fileBox.className = "file-grid-filebox";
 
   fileBox.appendChild(imageBox);
@@ -190,7 +287,26 @@ function fileTreeOnCollapse(event, treeId, treeNode) {
 function imageBoxOnClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
-  if (fsIsImage(filepath)) {
+  if (fsIsZip(filepath)) {
+    var zipKey = image.getAttribute("zipkey");
+    fs.readFile(filepath, function (err, data) {
+      if (err) {
+        console.error(err);
+        return;
+      }
+      JSZip.loadAsync(data).then(function (zip) {
+        if (fsCheckExtName(zipKey, ".png")) {
+          zip.file(zipKey).async("base64").then(function (data) {
+            imagePreview.src = "data:image/png;base64," + data;
+          });
+        } else if (fsCheckExtName(zipKey, ".jpg")) {
+          zip.file(zipKey).async("base64").then(function (data) {
+            imagePreview.src = "data:image/jpeg;base64," + data;
+          });
+        }
+      });
+    });
+  } else if (fsIsImage(filepath)) {
     imagePreview.src = filepath;
   }
 }
@@ -198,8 +314,13 @@ function imageBoxOnClick(event) {
 function imageBoxOnDoubleClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
-  if (fsIsImage(filepath)) {
-    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString('base64');
+  if (fsIsZip(filepath)) {
+    var zipKey = image.getAttribute("zipkey");
+    var realpath = filepath + "#" + zipKey;
+    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(realpath).toString("base64");
+    openLink(link, !isDebug, isDebug);
+  } else if (fsIsImage(filepath)) {
+    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString("base64");
     openLink(link, !isDebug, isDebug);
   } else if (fsIsDirectory(filepath)) {
     reloadFileGrid(filepath);

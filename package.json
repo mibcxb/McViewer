@@ -25,6 +25,7 @@
     "bootstrap": "^4.4.1",
     "drivelist": "^8.0.9",
     "jquery": "^3.4.1",
+    "mousetrap": "^1.6.5",
     "popper.js": "^1.16.1"
   }
 }

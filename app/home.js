@@ -23,6 +23,8 @@ var imagePreview;
 var fileGridContainer;
 var currentFilePath;
 
+let isDebug = true;
+
 $(document).ready(function () {
   $.fn.zTree.init($("#fileTreeDemo"), treeSettings, treeNodeData);
   zTree = $.fn.zTree.getZTreeObj("fileTreeDemo");
@@ -198,7 +200,7 @@ function imageBoxOnDoubleClick(event) {
   var filepath = image.getAttribute("filepath");
   if (fsIsImage(filepath)) {
     var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString('base64');
-    openLink(link);
+    openLink(link, !isDebug, isDebug);
   } else if (fsIsDirectory(filepath)) {
     reloadFileGrid(filepath);
   }

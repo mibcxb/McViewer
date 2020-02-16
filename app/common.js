@@ -6,6 +6,7 @@ const {
 } = require("electron").remote;
 const Mousetrap = require("mousetrap");
 const JSZip = require("jszip");
+const CsFile = require("./csfile");
 
 const rootDir = "/"; // os.platform() === 'win32' ? "" : "/";
 const homeDir = path.resolve(os.homedir());

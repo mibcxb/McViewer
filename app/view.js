@@ -1,49 +1,68 @@
 var imageBox;
 var imagePreview;
-var currentImgPath;
+var currentImgFile;
 var imageFileArray = [];
 
 let flipX = 0.3;
 let flipY = 0.2;
 
-$(document).ready(function() {
+$(document).ready(function () {
   imagePreview = document.getElementById("fileImagePreview");
   imageBox = document.getElementById("fileImageBox");
   imageBox.onclick = imageBoxOnClick;
 
   let imgUrl = new URL(window.location.href);
   let target = imgUrl.searchParams.get("target");
-  currentImgPath = Buffer.from(target, "base64").toString("utf-8");
-  imagePreview.src = currentImgPath;
+  let imgPath = Buffer.from(target, "hex").toString("utf-8");
+  currentImgFile = new CsFile(imgPath);
+  if (currentImgFile.isImageFile()) {
+    reloadImageFile();
+  }
 
-  prepareImageFileArray(path.posix.dirname(currentImgPath));
+  prepareImageFileArray(currentImgFile);
 
-  Mousetrap.bind("left", function() {
+  Mousetrap.bind("left", function () {
     flipImageTo(-1);
   });
-  Mousetrap.bind("right", function() {
+  Mousetrap.bind("right", function () {
     flipImageTo(1);
   });
 });
 
-function prepareImageFileArray(filepath) {
-  if (fsIsDirectory(filepath)) {
-    let folder = filepath;
-    fs.readdir(folder, (err, files) => {
-      if (err !== null) {
-        console.log(err);
-        return;
-      }
-
-      for (index in files) {
-        var name = files[index];
-        var imageFilePath = path.posix.join(folder, name);
-        if (fsIsImage(imageFilePath)) {
-          imageFileArray.push(imageFilePath);
-        }
-      }
+function reloadImageFile() {
+  currentImgFile.readFileAsync()
+    .then(function (data) {
+      imagePreview.src = "data:" + currentImgFile.mimeType() + ";base64," + data;
     });
+}
+
+function prepareImageFileArray(csFile) {
+  let parentFile = csFile.getParentFile();
+  parentFile.listFileAsync()
+    .then(function (csFileList) {
+      return filterByStatsAsync(csFileList);
+    })
+    .then(function (csFileList) {
+      imageFileArray = csFileList;
+    });
+}
+
+async function filterByStatsAsync(csFileList) {
+  let filtered = [];
+  if (csFileList) {
+    var csFile;
+    for (var i = 0; i < csFileList.length; i++) {
+      csFile = csFileList[i];
+      var stats = await csFile.fileStatsAsync();
+      if (csFile.isHidden()) {
+        continue;
+      }
+      if (csFile.isImageFile()) {
+        filtered.push(csFile);
+      }
+    }
   }
+  return filtered;
 }
 
 function imageBoxOnClick(event) {
@@ -74,9 +93,25 @@ function imageBoxOnClick(event) {
 }
 
 function flipImageTo(to) {
-  var imgIdx = imageFileArray.indexOf(currentImgPath) + to;
-  if (0 <= imgIdx && imgIdx < imageFileArray.length) {
-    currentImgPath = imageFileArray[imgIdx];
-    imagePreview.src = currentImgPath;
+  var curIdx = currentIndex();
+  if (curIdx === -1) {
+    return;
   }
+
+  var imgIdx = curIdx + to;
+  if (0 <= imgIdx && imgIdx < imageFileArray.length) {
+    currentImgFile = imageFileArray[imgIdx];
+    reloadImageFile();
+  }
+}
+
+function currentIndex() {
+  var imgFileIndex = -1;
+  for (var idx = 0; idx < imageFileArray.length; idx++) {
+    if (currentImgFile.fullpath === imageFileArray[idx].fullpath) {
+      imgFileIndex = idx;
+      break;
+    }
+  }
+  return imgFileIndex;
 }

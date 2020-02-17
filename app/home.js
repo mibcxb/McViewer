@@ -256,7 +256,7 @@ function imageBoxOnDoubleClick(event) {
   var filepath = image.getAttribute("filepath");
   var csFile = new CsFile(filepath);
   if (csFile.isImageFile()) {
-    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString("base64");
+    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath, "utf-8").toString("hex");
     openLink(link, !isDebug, isDebug);
   } else {
     reloadFileGrid(filepath);

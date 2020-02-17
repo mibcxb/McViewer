@@ -40,6 +40,7 @@ function CsFile(filepath, filename) {
   this.isZipFile = isZipFile;
   this.isImageFile = isImageFile;
   this.getParentPath = getParentPath;
+  this.getParentFile = getParentFile;
 }
 
 function basename() {
@@ -68,6 +69,10 @@ function isImageFile() {
 
 function getParentPath() {
   return detectParentPath(this);
+}
+
+function getParentFile() {
+  return new CsFile(detectParentPath(this));
 }
 
 async function fileStatsAsync() {

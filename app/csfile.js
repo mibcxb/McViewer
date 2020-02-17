@@ -36,6 +36,10 @@ function CsFile(filepath, filename) {
   this.getZipFileAsync = getZipFileAsync;
   this.listFileAsync = listFileAsync;
   this.readFileAsync = readFileAsync;
+  this.isHidden = isHidden;
+  this.isZipFile = isZipFile;
+  this.isImageFile = isImageFile;
+  this.getParentPath = getParentPath;
 }
 
 function basename() {
@@ -48,6 +52,22 @@ function extension() {
 
 function mimeType() {
   return optMimeType(this);
+}
+
+function isHidden() {
+  return checkHidden(this);
+}
+
+function isZipFile() {
+  return checkZipFile(this);
+}
+
+function isImageFile() {
+  return checkImageFile(this);
+}
+
+function getParentPath() {
+  return detectParentPath(this);
 }
 
 async function fileStatsAsync() {
@@ -84,8 +104,28 @@ function isRealFile(csFile) {
   return csFile.segment === undefined;
 }
 
-function isZipped(csFile) {
+function checkHidden(csFile) {
+  return /(^|\/)\.[^\/\.]/g.test(optBasename(csFile));
+}
+
+function checkZipFile(csFile) {
   return isRealFile(csFile) && optExtension(csFile) === ".zip";
+}
+
+function checkImageFile(csFile) {
+  let extname = optExtension(csFile);
+  return extname === ".png" || extname === ".jpg";
+}
+
+function detectParentPath(csFile) {
+  if (isRealFile(csFile)) {
+    return path.dirname(csFile.fullpath);
+  }
+  let dirname = path.dirname(csFile.segment);
+  if (dirname === ".") {
+    return csFile.zipPath;
+  }
+  return csFile.zipPath + CS_ZIP_DELEMITER + dirname + "/";
 }
 
 async function tryFileStatsAsync(csFile) {
@@ -166,7 +206,7 @@ async function loadJsZipAsync(filepath) {
 async function tryListFileAsync(csFile) {
   var fileList = [];
   let csStats = await tryFileStatsAsync(csFile);
-  if (csStats.isDirectory || isZipped(csFile)) {
+  if (csStats.isDirectory || checkZipFile(csFile)) {
     if (csStats.isDirectory && !csStats.isZipped) {
       // 普通文件夹
       let files = await fsPromises.readdir(csFile.fullpath);
@@ -179,10 +219,16 @@ async function tryListFileAsync(csFile) {
       let files = Object.keys(zipFile.files);
       files.forEach(filename => {
         var testname = path.posix.dirname(filename) + "/";
-        let accept = csFile.segment === undefined ? testname === "./" : testname === csFile.segment;
-        if (accept) {
-          var file = new CsFile(csFile.fullpath + CS_ZIP_DELEMITER, filename);
-          fileList.push(file);
+        if (isRealFile(csFile)) {
+          if (testname === "./") {
+            var file = new CsFile(csFile.fullpath + CS_ZIP_DELEMITER, filename);
+            fileList.push(file);
+          }
+        } else {
+          if (testname === csFile.segment) {
+            var file = new CsFile(csFile.zipPath + CS_ZIP_DELEMITER, filename);
+            fileList.push(file);
+          }
         }
       });
     }

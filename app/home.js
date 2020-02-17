@@ -138,120 +138,75 @@ function reloadFileGrid(filepath) {
   editFilePath.value = currentFilePath;
 
   fileGridContainer.innerHTML = "";
-  if (fsIsDirectory(currentFilePath)) {
-    // 创建文件列表
-    createFolderGrid(currentFilePath);
-  } else if (fsIsZip(currentFilePath)) {
-    // 显示压缩文件中的文件
-    createZipFileGrid(currentFilePath);
-  }
+  createFileGrid(filepath);
 }
 
-function createZipFileGrid(filepath) {
-  fs.readFile(filepath, function (err, data) {
-    if (err) throw err;
-    JSZip.loadAsync(data).then(function (zip) {
-      var keys = Object.keys(zip.files);
-      for (keyIdx in keys) {
-        var zipKey = keys[keyIdx];
-        var fileBoxElement = createZipFileBoxElement(filepath, zip, zipKey);
-        if (fileBoxElement == null) {
-          continue;
-        }
-        fileGridContainer.appendChild(fileBoxElement);
+function createFileGrid(filepath) {
+  let csFile = new CsFile(filepath);
+  csFile.fileStatsAsync()
+    .then(function (csStats) {
+      if (csStats.isDirectory || csFile.isZipFile()) {
+        return csFile.listFileAsync();
+      }
+      return new Promise(function (resolve) {
+        resolve([]);
+      });
+    })
+    .then(function (csFileList) {
+      return filterByStatsAsync(csFileList);
+    })
+    .then(function (csFileList) {
+      if (csFileList) {
+        csFileList.forEach(csFile => {
+          var element = createFileGridElement(csFile);
+          if (element != null) {
+            fileGridContainer.appendChild(element);
+          }
+        });
       }
     });
-  });
 }
 
-function createFolderGrid(folder) {
-  fs.readdir(folder, (err, files) => {
-    if (err !== null) {
-      console.log(err);
-      return;
-    }
-
-    for (index in files) {
-      var name = files[index];
-      var filepath = path.posix.join(folder, name);
-      var fileBoxElement = createFileBoxElement(filepath);
-      if (fileBoxElement == null) {
+async function filterByStatsAsync(csFileList) {
+  let filtered = [];
+  if (csFileList) {
+    var csFile;
+    for (var i = 0; i < csFileList.length; i++) {
+      csFile = csFileList[i];
+      var stats = await csFile.fileStatsAsync();
+      if (csFile.isHidden()) {
         continue;
       }
-      fileGridContainer.appendChild(fileBoxElement);
+      if (stats.isDirectory || csFile.isZipFile() || csFile.isImageFile()) {
+        filtered.push(csFile);
+      }
     }
-  });
+  }
+  return filtered;
 }
 
-function createZipFileBoxElement(filepath, zip, zipKey) {
-  var zipFile = zip.files[zipKey];
-  var basename = path.posix.basename(zipKey);
-
+function createFileGridElement(csFile) {
   var imageLabel = document.createElement("div");
   imageLabel.className = "file-grid-imagelabel";
-  imageLabel.textContent = basename;
+  imageLabel.textContent = csFile.basename();
 
   var image = document.createElement("img");
   image.id = "fileImageThumb";
-  if (zipFile.dir) {
-    image.src = "../res/img/folder.png";
-  } else {
-    if (fsCheckExtName(zipKey, ".png")) {
-      zip.file(zipKey).async("base64").then(function (data) {
-        image.src = "data:image/png;base64," + data;
+  if (csFile.csStats.isDirectory) {
+    image.src = "../res/img/folder_2.png";
+  } else if (csFile.isZipFile()) {
+    image.src = "../res/img/zip_mid.png";
+  } else if (csFile.isImageFile()) {
+    csFile.readFileAsync()
+      .then(function (data) {
+        image.src = "data:" + csFile.mimeType() + ";base64," + data;
       });
-      image.setAttribute("zipkey", zipKey);
-    } else if (fsCheckExtName(zipKey, ".jpg")) {
-      zip.file(zipKey).async("base64").then(function (data) {
-        image.src = "data:image/jpeg;base64," + data;
-      });
-      image.setAttribute("zipkey", zipKey);
-    } else {
-      return null;
-    }
-
   }
-  image.setAttribute("filepath", filepath);
+  image.setAttribute("filepath", csFile.fullpath);
 
   var imageBox = document.createElement("div");
   imageBox.className = "file-grid-image";
-  imageBox.setAttribute("filepath", filepath);
-  imageBox.appendChild(image);
-  imageBox.onclick = imageBoxOnClick;
-  imageBox.ondblclick = imageBoxOnDoubleClick;
-
-  var fileBox = document.createElement("div");
-  fileBox.className = "file-grid-filebox";
-
-  fileBox.appendChild(imageBox);
-  fileBox.appendChild(imageLabel);
-  return fileBox;
-}
-
-function createFileBoxElement(filepath) {
-  if (fsIsHidden(filepath)) {
-    return null;
-  }
-  var basename = path.posix.basename(filepath);
-
-  var imageLabel = document.createElement("div");
-  imageLabel.className = "file-grid-imagelabel";
-  imageLabel.textContent = basename;
-
-  var image = document.createElement("img");
-  image.id = "fileImageThumb";
-  if (fsIsDirectory(filepath)) {
-    image.src = "../res/img/folder.png";
-  } else if (fsIsImage(filepath)) {
-    image.src = filepath;
-  } else {
-    return null;
-  }
-  image.setAttribute("filepath", filepath);
-
-  var imageBox = document.createElement("div");
-  imageBox.className = "file-grid-image";
-  imageBox.setAttribute("filepath", filepath);
+  imageBox.setAttribute("filepath", csFile.fullpath);
   imageBox.appendChild(image);
   imageBox.onclick = imageBoxOnClick;
   imageBox.ondblclick = imageBoxOnDoubleClick;
@@ -287,47 +242,28 @@ function fileTreeOnCollapse(event, treeId, treeNode) {
 function imageBoxOnClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
-  if (fsIsZip(filepath)) {
-    var zipKey = image.getAttribute("zipkey");
-    fs.readFile(filepath, function (err, data) {
-      if (err) {
-        console.error(err);
-        return;
-      }
-      JSZip.loadAsync(data).then(function (zip) {
-        if (fsCheckExtName(zipKey, ".png")) {
-          zip.file(zipKey).async("base64").then(function (data) {
-            imagePreview.src = "data:image/png;base64," + data;
-          });
-        } else if (fsCheckExtName(zipKey, ".jpg")) {
-          zip.file(zipKey).async("base64").then(function (data) {
-            imagePreview.src = "data:image/jpeg;base64," + data;
-          });
-        }
+  let csFile = new CsFile(filepath);
+  if (csFile.isImageFile()) {
+    csFile.readFileAsync()
+      .then(function (data) {
+        imagePreview.src = "data:" + csFile.mimeType() + ";base64," + data;
       });
-    });
-  } else if (fsIsImage(filepath)) {
-    imagePreview.src = filepath;
   }
 }
 
 function imageBoxOnDoubleClick(event) {
   var image = event.target;
   var filepath = image.getAttribute("filepath");
-  if (fsIsZip(filepath)) {
-    var zipKey = image.getAttribute("zipkey");
-    var realpath = filepath + "#" + zipKey;
-    var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(realpath).toString("base64");
-    openLink(link, !isDebug, isDebug);
-  } else if (fsIsImage(filepath)) {
+  var csFile = new CsFile(filepath);
+  if (csFile.isImageFile()) {
     var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath).toString("base64");
     openLink(link, !isDebug, isDebug);
-  } else if (fsIsDirectory(filepath)) {
+  } else {
     reloadFileGrid(filepath);
   }
 }
 
 function backwardOnClick(event) {
-  var parentPath = path.posix.dirname(currentFilePath);
-  reloadFileGrid(parentPath);
+  var csFile = new CsFile(currentFilePath);
+  reloadFileGrid(csFile.getParentPath());
 }

@@ -27,6 +27,9 @@ $(document).ready(function () {
   Mousetrap.bind("right", function () {
     flipImageTo(1);
   });
+  Mousetrap.bind("esc", function () {
+    window.close();
+  });
 });
 
 function reloadImageFile() {

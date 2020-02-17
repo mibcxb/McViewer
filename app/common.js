@@ -81,17 +81,21 @@ function zipFileList(filepath, callback) {
     });
 }
 
-function openLink(link, fullscreen, isDebug) {
+function openLink(link, fullscreen, isDebug, onClosed) {
     let win = new BrowserWindow({
         width: 800,
         height: 600,
         fullscreen: fullscreen,
+        alwaysOnTop: true,
         webPreferences: {
             nodeIntegration: true
         }
     });
     win.on("closed", () => {
         win = null;
+        if (onClosed) {
+            onClosed();
+        }
     });
     win.loadURL(link);
     if (isDebug) {

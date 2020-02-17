@@ -23,7 +23,8 @@ var imagePreview;
 var fileGridContainer;
 var currentFilePath;
 
-let isDebug = true;
+let isDebug = false;
+var isViewOpened = false;
 
 $(document).ready(function () {
   $.fn.zTree.init($("#fileTreeDemo"), treeSettings, treeNodeData);
@@ -252,12 +253,18 @@ function imageBoxOnClick(event) {
 }
 
 function imageBoxOnDoubleClick(event) {
+  if (isViewOpened) {
+    return;
+  }
   var image = event.target;
   var filepath = image.getAttribute("filepath");
   var csFile = new CsFile(filepath);
   if (csFile.isImageFile()) {
     var link = "file://" + __dirname + "/view.html?target=" + Buffer.from(filepath, "utf-8").toString("hex");
-    openLink(link, !isDebug, isDebug);
+    openLink(link, !isDebug, isDebug, function () {
+      isViewOpened = false;
+    });
+    isViewOpened = true;
   } else {
     reloadFileGrid(filepath);
   }

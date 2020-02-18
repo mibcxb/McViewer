@@ -275,4 +275,46 @@ async function readZipFileAsBase64(csFile) {
     });
 }
 
+async function getDriveList() {
+  if (os.platform() === "win32")
+    return stupidWinDriveList();
+  else
+    return ["/"];
+}
+
+async function stupidWinDriveList() {
+  return new Promise(function (resolve) {
+    let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    var drives = [];
+    for (var i = 0; i < alphabet.length; i++) {
+      let ch = alphabet.charAt(i);
+      try {
+        fs.accessSync(ch + ":", fs.constants.F_OK);
+        drives.push("/" + ch);
+      } catch (err) {}
+    }
+    resolve(drives);
+  });
+}
+
+function toUnixPath(filepath) {
+  return "/" + path.normalize(filepath).replace(":\\", "/");
+}
+
+function toRealPath(filepath) {
+  filepath = path.posix.normalize(filepath);
+  var realpath = null;
+  if (/\/[A-Z]{1}\/.+/.test(filepath)) {
+    var prefix = filepath.charAt(1) + ":";
+    var suffix = filepath.substring(2);
+    realpath = prefix + suffix;
+  } else if (/\/[A-Z]{1}/.test(filepath)) {
+    realpath = filepath.charAt(1) + ":";
+  }
+  if (realpath != null && os.platform() === "win32") {
+    realpath = path.win32.normalize(realpath);
+  }
+  return realpath;
+}
+
 module.exports = CsFile;

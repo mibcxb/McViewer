@@ -319,8 +319,10 @@ function toRealPath(filepath) {
     var prefix = filepath.charAt(1) + ":";
     var suffix = filepath.substring(2);
     realpath = prefix + suffix;
-  } else if (/\/[A-Z]{1}/.test(filepath)) {
+  } else if (/^\/[A-Z]{1}$/.test(filepath)) {
     realpath = filepath.charAt(1) + ":";
+  } else {
+    realpath = filepath;
   }
   if (realpath != null && os.platform() === "win32") {
     realpath = path.win32.normalize(realpath);

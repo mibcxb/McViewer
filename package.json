@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "packageMac": "electron-packager . McViewer --platform=darwin --arch=x64",
-    "packageWin": "electron-packager . McViewer --platform=win32 --arch=x86_64"
+    "packageWin": "electron-packager . McViewer --platform=win32 --arch=x64"
   },
   "repository": {
     "type": "git",

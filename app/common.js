@@ -9,7 +9,11 @@ const JSZip = require("jszip");
 const CsFile = require("./csfile");
 
 const rootDir = "/"; // os.platform() === 'win32' ? "" : "/";
-const homeDir = path.resolve(os.homedir());
+const homeDir = toUnixPath(os.homedir());
+
+function toUnixPath(filepath) {
+    return "/" + path.normalize(filepath).replace(":\\", "/");
+}
 
 function osIsWindows() {
     return os.platform().startsWith("win");

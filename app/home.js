@@ -14,7 +14,8 @@ var treeSettings = {
 };
 var treeNodeData = [{
   name: "根目录",
-  filepath: rootDir,
+  //filepath: rootDir,
+  csFile: new CsFile(rootDir),
   children: []
 }];
 
@@ -35,42 +36,45 @@ $(document).ready(function () {
 
   document.getElementById("btnBackward").onclick = backwardOnClick;
 
-  loadRootList(zTree);
+  loadRootList(zTree).then(function () {
+    console.log('loadRootList done.')
+  });
 });
 
-function loadRootList(zTree) {
+async function loadRootList(zTree) {
   var nodeList = zTree.getNodes();
   var parentNode = null;
   var parentPath = rootDir;
 
-  var dirNames = homeDir.split(path.sep);
+  var dirNames = homeDir.split("/");
   for (dirIdx in dirNames) {
     var filepath = path.posix.join(parentPath, dirNames[dirIdx]);
     for (subIdx in nodeList) {
-      if (nodeList[subIdx].filepath === filepath) {
+      if (nodeList[subIdx].csFile.fullpath === filepath) {
         parentNode = nodeList[subIdx];
-        parentPath = nodeList[subIdx].filepath;
+        parentPath = parentNode.csFile.fullpath;
         break;
       }
     }
-    nodeList = readFileList(zTree, parentNode, parentPath);
+    nodeList = await readFileList(zTree, parentNode);
   }
   zTree.refresh();
 
-  reloadFileGrid(parentNode.filepath);
+  reloadFileGrid(parentNode.csFile.fullpath);
 }
 
-function readFileList(zTree, parentNode, filepath) {
+async function readFileList(zTree, parentNode) {
   // 同步创建子节点列表
   var nodeList = [];
-  var files = fs.readdirSync(filepath);
+  var files = await parentNode.csFile.listFileAsync();
   for (index in files) {
-    var name = files[index];
+    var csFile = files[index];
+    var name = csFile.basename();
     var node = {
       name: name,
-      filepath: path.posix.join(filepath, name)
+      csFile: csFile,
     };
-    var treeNode = createFileTreeNode(node);
+    var treeNode = await createFileTreeNode(node);
     if (treeNode != null) {
       nodeList.push(treeNode);
     }
@@ -79,47 +83,46 @@ function readFileList(zTree, parentNode, filepath) {
   return parentNode.children;
 }
 
-function appendFileNodeList(zTree, parentNode) {
+async function appendFileNodeList(zTree, parentNode) {
   var nodeList = [];
-  var folder = parentNode.filepath;
-  fs.readdir(folder, (err, files) => {
-    if (err !== null) {
-      console.log(err);
-      return;
+  var files = await parentNode.csFile.listFileAsync();
+  for (index in files) {
+    var csFile = files[index];
+    var name = csFile.basename();
+    var node = {
+      name: name,
+      csFile: csFile,
+    };
+    var treeNode = await createFileTreeNode(node);
+    if (treeNode != null) {
+      nodeList.push(treeNode);
     }
-
-    for (index in files) {
-      var name = files[index];
-      var node = {
-        name: name,
-        filepath: path.posix.join(folder, name)
-      };
-      var treeNode = createFileTreeNode(node);
-      if (treeNode != null) {
-        nodeList.push(treeNode);
-      }
-    }
-    zTree.addNodes(parentNode, nodeList);
-    zTree.refresh();
-  });
+  }
+  zTree.addNodes(parentNode, nodeList);
+  zTree.refresh();
 }
 
 function removeFileNodeList(zTree, parentNode) {
   zTree.removeChildNodes(parentNode);
 }
 
-function createFileTreeNode(node) {
-  if (fsIsHidden(node.filepath)) {
-    return null;
+async function createFileTreeNode(node) {
+  var csStats = null;
+  try {
+    csStats = await node.csFile.fileStatsAsync();
+  } catch (err) {
+    console.log(err);
   }
-  if (fsIsDirectory(node.filepath)) {
-    node.isParent = true;
-    node.children = [];
-    return node;
-  } else if (fsIsFile(node.filepath)) {
-    node.isParent = false;
-    var extname = path.posix.extname(node.filepath);
-    if (extname === ".zip") {
+  if (csStats != null) {
+    if (fsIsHidden(node.csFile.fullpath)) {
+      return null;
+    }
+    if (csStats.isDirectory) {
+      node.isParent = true;
+      node.children = [];
+      return node;
+    } else if (node.csFile.isZipFile()) {
+      node.isParent = false;
       node.icon = "../res/img/zip.png";
       return node;
     }
@@ -139,33 +142,36 @@ function reloadFileGrid(filepath) {
   editFilePath.value = currentFilePath;
 
   fileGridContainer.innerHTML = "";
-  createFileGrid(filepath);
+  createFileGrid(filepath).then(function () {
+    console.log('createFileGrid done.');
+  });
 }
 
-function createFileGrid(filepath) {
+async function createFileGrid(filepath) {
   let csFile = new CsFile(filepath);
-  csFile.fileStatsAsync()
-    .then(function (csStats) {
-      if (csStats.isDirectory || csFile.isZipFile()) {
-        return csFile.listFileAsync();
-      }
-      return new Promise(function (resolve) {
-        resolve([]);
+  var csStats = null;
+  try {
+    csStats = await csFile.fileStatsAsync();
+  } catch (err) {
+    console.log(err);
+  }
+  if (csStats != null) {
+    var csFileList = null;
+    if (csStats.isDirectory || csFile.isZipFile()) {
+      csFileList = await csFile.listFileAsync();
+    } else {
+      csFileList = [];
+    }
+    if (csFileList != null) {
+      csFileList = await filterByStatsAsync(csFileList);
+      csFileList.forEach(csFile => {
+        var element = createFileGridElement(csFile);
+        if (element != null) {
+          fileGridContainer.appendChild(element);
+        }
       });
-    })
-    .then(function (csFileList) {
-      return filterByStatsAsync(csFileList);
-    })
-    .then(function (csFileList) {
-      if (csFileList) {
-        csFileList.forEach(csFile => {
-          var element = createFileGridElement(csFile);
-          if (element != null) {
-            fileGridContainer.appendChild(element);
-          }
-        });
-      }
-    });
+    }
+  }
 }
 
 async function filterByStatsAsync(csFileList) {
@@ -174,8 +180,16 @@ async function filterByStatsAsync(csFileList) {
     var csFile;
     for (var i = 0; i < csFileList.length; i++) {
       csFile = csFileList[i];
-      var stats = await csFile.fileStatsAsync();
       if (csFile.isHidden()) {
+        continue;
+      }
+      var stats = null;
+      try {
+        stats = await csFile.fileStatsAsync();
+      } catch (err) {
+        console.log(err);
+      }
+      if (stats == null) {
         continue;
       }
       if (stats.isDirectory || csFile.isZipFile() || csFile.isImageFile()) {
@@ -222,7 +236,7 @@ function createFileGridElement(csFile) {
 
 function fileTreeOnClick(event, treeId, treeNode) {
   // console.log("onClick : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
-  reloadFileGrid(treeNode.filepath);
+  reloadFileGrid(treeNode.csFile.fullpath);
 }
 
 function fileTreeBeforeExpand(treeId, treeNode) {
@@ -232,7 +246,9 @@ function fileTreeBeforeExpand(treeId, treeNode) {
 
 function fileTreeOnExpand(event, treeId, treeNode) {
   // console.log("onExpand : " + event + ", treeId=" + treeId + ", node=" + treeNode.name);
-  appendFileNodeList(zTree, treeNode);
+  appendFileNodeList(zTree, treeNode).then(function () {
+    console.log('appendFileNodeList done.')
+  });
 }
 
 function fileTreeOnCollapse(event, treeId, treeNode) {

@@ -5,8 +5,8 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "packageMac": "electron-packager . McViewer --platform=darwin --arch=x64",
-    "packageWin": "electron-packager . McViewer --platform=win32 --arch=x64"
+    "packageMac": "electron-packager . McViewer --platform=darwin --arch=x64 --asar=true",
+    "packageWin": "electron-packager . McViewer --platform=win32 --arch=x64 --asar=true"
   },
   "repository": {
     "type": "git",

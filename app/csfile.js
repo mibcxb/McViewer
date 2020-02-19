@@ -221,32 +221,39 @@ async function tryListFileAsync(csFile) {
   }
 
   var fileList = [];
-  let csStats = await tryFileStatsAsync(csFile);
-  if (csStats.isDirectory || checkZipFile(csFile)) {
-    if (csStats.isDirectory && !csStats.isZipped) {
-      // 普通文件夹
-      let files = await fsPromises.readdir(toRealPath(csFile.fullpath));
-      files.forEach(filename => {
-        var file = new CsFile(csFile.fullpath, filename);
-        fileList.push(file);
-      });
-    } else {
-      let zipFile = await tryLoadZipFileAsync(csFile);
-      let files = Object.keys(zipFile.files);
-      files.forEach(filename => {
-        var testname = path.posix.dirname(filename) + "/";
-        if (isRealFile(csFile)) {
-          if (testname === "./") {
-            var file = new CsFile(csFile.fullpath + CS_ZIP_DELEMITER, filename);
-            fileList.push(file);
+  let csStats = null;
+  try {
+    csStats = await tryFileStatsAsync(csFile);
+  } catch (err) {
+    console.log(err);
+  }
+  if (csStats != null) {
+    if (csStats.isDirectory || checkZipFile(csFile)) {
+      if (csStats.isDirectory && !csStats.isZipped) {
+        // 普通文件夹
+        let files = await fsPromises.readdir(toRealPath(csFile.fullpath));
+        files.forEach(filename => {
+          var file = new CsFile(csFile.fullpath, filename);
+          fileList.push(file);
+        });
+      } else {
+        let zipFile = await tryLoadZipFileAsync(csFile);
+        let files = Object.keys(zipFile.files);
+        files.forEach(filename => {
+          var testname = path.posix.dirname(filename) + "/";
+          if (isRealFile(csFile)) {
+            if (testname === "./") {
+              var file = new CsFile(csFile.fullpath + CS_ZIP_DELEMITER, filename);
+              fileList.push(file);
+            }
+          } else {
+            if (testname === csFile.segment) {
+              var file = new CsFile(csFile.zipPath + CS_ZIP_DELEMITER, filename);
+              fileList.push(file);
+            }
           }
-        } else {
-          if (testname === csFile.segment) {
-            var file = new CsFile(csFile.zipPath + CS_ZIP_DELEMITER, filename);
-            fileList.push(file);
-          }
-        }
-      });
+        });
+      }
     }
   }
   return fileList;
@@ -309,7 +316,14 @@ async function stupidWinDriveList() {
 }
 
 function toUnixPath(filepath) {
-  return "/" + path.normalize(filepath).replace(":\\", "/");
+  if (os.platform() === "win32") {
+    var tempPath = "/";
+    tempPath = tempPath + path.posix.normalize(filepath);
+    tempPath = tempPath.replace(":\\", "/");
+    tempPath = tempPath.replace("\\", "/");
+    filepath = tempPath;
+  }
+  return filepath;
 }
 
 function toRealPath(filepath) {
@@ -320,7 +334,7 @@ function toRealPath(filepath) {
     var suffix = filepath.substring(2);
     realpath = prefix + suffix;
   } else if (/^\/[A-Z]{1}$/.test(filepath)) {
-    realpath = filepath.charAt(1) + ":";
+    realpath = filepath.charAt(1) + ":\\";
   } else {
     realpath = filepath;
   }

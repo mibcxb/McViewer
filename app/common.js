@@ -12,7 +12,32 @@ const rootDir = "/"; // os.platform() === 'win32' ? "" : "/";
 const homeDir = toUnixPath(os.homedir());
 
 function toUnixPath(filepath) {
-    return "/" + path.normalize(filepath).replace(":\\", "/");
+    if (os.platform() === "win32") {
+        var tempPath = "/";
+        tempPath = tempPath + path.posix.normalize(filepath);
+        tempPath = tempPath.replace(":\\", "/");
+        tempPath = tempPath.replace("\\", "/");
+        filepath = tempPath;
+    }
+    return filepath;
+}
+
+function toRealPath(filepath) {
+    filepath = path.posix.normalize(filepath);
+    var realpath = null;
+    if (/\/[A-Z]{1}\/.+/.test(filepath)) {
+        var prefix = filepath.charAt(1) + ":";
+        var suffix = filepath.substring(2);
+        realpath = prefix + suffix;
+    } else if (/^\/[A-Z]{1}$/.test(filepath)) {
+        realpath = filepath.charAt(1) + ":\\";
+    } else {
+        realpath = filepath;
+    }
+    if (realpath != null && os.platform() === "win32") {
+        realpath = path.win32.normalize(realpath);
+    }
+    return realpath;
 }
 
 function osIsWindows() {
@@ -20,11 +45,21 @@ function osIsWindows() {
 }
 
 function fsIsFile(filepath) {
-    return fs.statSync(filepath).isFile();
+    try {
+        return fs.statSync(filepath).isFile();
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
 }
 
 function fsIsDirectory(filepath) {
-    return fs.statSync(filepath).isDirectory();
+    try {
+        return fs.statSync(filepath).isDirectory();
+    } catch (err) {
+        console.error(err);
+        return false;
+    }
 }
 
 function fsIsHidden(filepath) {

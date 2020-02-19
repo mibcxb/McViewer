@@ -1,4 +1,5 @@
 "use strict";
+const os = require("os");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const path = require("path").posix;
@@ -136,9 +137,9 @@ function detectParentPath(csFile) {
 async function tryFileStatsAsync(csFile) {
   if (csFile.csStats == null) {
     if (isRealFile(csFile)) {
-      csFile.csStats = await readFileStatsAsync(csFile.fullpath);
+      csFile.csStats = await readFileStatsAsync(toRealPath(csFile.fullpath));
     } else {
-      csFile.csStats = await readZipFileStatsAsync(csFile.zipPath, csFile.segment);
+      csFile.csStats = await readZipFileStatsAsync(toRealPath(csFile.zipPath), csFile.segment);
     }
   }
   return csFile.csStats;
@@ -196,7 +197,7 @@ async function tryLoadZipFileAsync(csFile) {
 
   if (csFile.zipFile == null) {
     let filepath = isRealFile(csFile) ? csFile.fullpath : csFile.zipPath;
-    csFile.zipFile = await loadJsZipAsync(filepath);
+    csFile.zipFile = await loadJsZipAsync(toRealPath(filepath));
   }
   return csFile.zipFile;
 }
@@ -209,12 +210,22 @@ async function loadJsZipAsync(filepath) {
 }
 
 async function tryListFileAsync(csFile) {
+  if (csFile.fullpath === "/" && os.platform() === "win32") {
+    var fileList = [];
+    let drives = await stupidWinDriveList();
+    drives.forEach(drive => {
+      var file = new CsFile(drive);
+      fileList.push(file);
+    });
+    return fileList;
+  }
+
   var fileList = [];
   let csStats = await tryFileStatsAsync(csFile);
   if (csStats.isDirectory || checkZipFile(csFile)) {
     if (csStats.isDirectory && !csStats.isZipped) {
       // 普通文件夹
-      let files = await fsPromises.readdir(csFile.fullpath);
+      let files = await fsPromises.readdir(toRealPath(csFile.fullpath));
       files.forEach(filename => {
         var file = new CsFile(csFile.fullpath, filename);
         fileList.push(file);
@@ -255,7 +266,7 @@ async function tryReadAsBase64(csFile) {
 }
 
 async function readFileAsBase64(csFile) {
-  return fsPromises.readFile(csFile.fullpath)
+  return fsPromises.readFile(toRealPath(csFile.fullpath))
     .then(function (data) {
       return new Promise(function (res, ref) {
         try {

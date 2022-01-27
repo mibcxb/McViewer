@@ -2,8 +2,9 @@
   "name": "cn.mibcxb.js.mcviewer",
   "version": "0.1.0",
   "description": "A simple image viewer",
-  "main": "main.js",
+  "main": "build/app.js",
   "scripts": {
+    "prestart": "tsc",
     "start": "electron .",
     "packageMac": "electron-packager . McViewer --platform=darwin --arch=x64 --asar=true",
     "packageWin": "electron-packager . McViewer --platform=win32 --arch=x64 --asar=true"
@@ -19,16 +20,18 @@
   },
   "homepage": "https://github.com/mibcxb/McViewer#readme",
   "devDependencies": {
-    "electron": "^8.2.0",
-    "electron-packager": "^14.2.1"
+    "@types/bootstrap": "^5.1.0",
+    "@types/electron": "^1.6.10",
+    "@types/jquery": "^3.5.0",
+    "@types/mousetrap": "^1.6.5",
+    "@types/node": "^17.0.12",
+    "electron": "^16.0.0",
+    "electron-packager": "^15.4.0",
+    "typescript": "^4.5.5"
   },
   "dependencies": {
-    "bootstrap": "^4.4.1",
-    "jquery": "^3.4.1",
-    "jszip": "^3.2.2",
-    "mime": "^2.4.4",
-    "minimist": ">=1.2.3",
-    "mousetrap": "^1.6.5",
-    "popper.js": "^1.16.1"
+    "bootstrap": "^5.1.0",
+    "jquery": "^3.5.0",
+    "mousetrap": "^1.6.5"
   }
 }

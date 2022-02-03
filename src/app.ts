@@ -10,6 +10,8 @@ let createWindow = () => {
     })
 
     win.loadFile('app/main.html');
+
+    // win.webContents.openDevTools()
 }
 
 app.on('ready', createWindow)
